@@ -1,6 +1,8 @@
 import { firebaseApp } from './firebase'
-import * as firebase from 'firebase'
+import firebase from 'firebase/app'
+//import * as firebase from 'firebase'
 import 'firebase/firestore'
+import '@firebase/auth'
 
 const db = firebase.firestore(firebaseApp)
 
