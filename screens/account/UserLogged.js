@@ -7,6 +7,7 @@ import Toast from 'react-native-easy-toast'
 import { closeSession, getCurrentUser } from '../../utils/actions'
 import Loading from '../../components/Loading'
 import InfoUser from '../../components/account/InfoUser'
+import AccountOptions from '../../components/account/AccountOptions'
 
 export default function UserLogged() {
     const toastRef = useRef()
@@ -15,17 +16,27 @@ export default function UserLogged() {
     const [loading, setLoading] = useState(false)
     const [loadingText, setLoadingText] = useState("")
     const [user, setUser] = useState(null)
+    const [reloadUser, setReloadUser] = useState(false)
 
     useEffect(() => {
         setUser(getCurrentUser())
-    }, [])
+        setReloadUser(false)
+    }, [reloadUser])
 
     return (
         <View style={styles.container}>
             {
-                user && <InfoUser user={user}/>
+                user && (
+                    <View>
+                        <InfoUser user={user} setLoading={setLoading} setLoadingText={setLoadingText}/>        
+                        <AccountOptions
+                            user={user}
+                            toastRef={toastRef}
+                            setReloadUser={setReloadUser}
+                        />
+                    </View>
+                    )
             }
-            <Text>Account Options</Text>
             <Button
                 title="Cerrar Sesión"
                 buttonStyle={styles.btnCloseSession}
@@ -35,7 +46,7 @@ export default function UserLogged() {
                     navigation.navigate("restaurants")
                 }}
             />
-            <Toast ref={toastRef} position="center" opacity={0,9}/>
+            <Toast ref={toastRef} position="center" opacity={0.9}/>
             <Loading isVisible={loading} text={loadingText}/>
         </View>
     )
