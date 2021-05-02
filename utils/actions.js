@@ -1,8 +1,10 @@
 import { firebaseApp } from './firebase'
-import firebase from 'firebase/app'
+//import firebase from 'firebase/app'
 //import * as firebase from 'firebase'
+import firebase from 'firebase'
 import 'firebase/firestore'
 import '@firebase/auth'
+import 'firebase/storage'
 
 import { fileToBlob } from './helpers'
 
@@ -102,6 +104,107 @@ export const updatePassword = async(password) => {
     const result = { statusResponse: true, error: null }
     try {
         await firebase.auth().currentUser.updatePassword(password)
+    } catch (error) {
+        result.statusResponse = false
+        result.error = error
+    }
+    return result
+}
+
+export const addDocumentWithoutId = async(collection, data) => {
+    const result = { statusResponse: true, error: null }
+    try {
+        await db.collection(collection).add(data)
+    } catch (error) {
+        result.statusResponse = false
+        result.error = error
+    }
+    return result
+}
+
+export const getRestaurants = async(limitRestaurants) => {
+    const result = { statusResponse: true, error: null, restaurants: [], startRestaurant: null }
+    try {
+        const response = await db
+                            .collection("restaurants")
+                            .orderBy("createAt", "desc")
+                            .limit(limitRestaurants)
+                            .get()
+        if(response.docs.length > 0){
+            result.startRestaurant = response.docs[response.docs.length -1]
+        }
+        response.forEach((doc) => {
+            const restaurant = doc.data()
+            restaurant.id = doc.id
+            result.restaurants.push(restaurant)
+        })
+    } catch (error) {
+        result.statusResponse = false
+        result.error = error
+    }
+    return result
+}
+
+export const getMoreRestaurants = async(limitRestaurants, startRestaurant) => {
+    const result = { statusResponse: true, error: null, restaurants: [], startRestaurant: null }
+    try {
+        const response = await db
+                            .collection("restaurants")
+                            .orderBy("createAt", "desc")
+                            .startAfter(startRestaurant.data().createAt)
+                            .limit(limitRestaurants)
+                            .get()
+        if(response.docs.length > 0){
+            result.startRestaurant = response.docs[response.docs.length -1]
+        }
+        response.forEach((doc) => {
+            const restaurant = doc.data()
+            restaurant.id = doc.id
+            result.restaurants.push(restaurant)
+        })
+    } catch (error) {
+        result.statusResponse = false
+        result.error = error
+    }
+    return result
+}
+
+export const getDocumentById = async(collection, id) => {
+    const result = { statusResponse: true, error: null, document: null }
+    try {
+        const response = await db.collection(collection).doc(id).get()
+        result.document = response.data()
+        result.document.id = response.id
+    } catch (error) {
+        result.statusResponse = false
+        result.error = error
+    }
+    return result
+}
+
+export const updateDocument = async(collection, id, data) => {
+    const result = { statusResponse: true, error: null }
+    try {
+        await db.collection(collection).doc(id).update(data)
+    } catch (error) {
+        result.statusResponse = false
+        result.error = error
+    }
+    return result
+}
+
+export const getRestaurantReviews = async(id) => {
+    const result = { statusResponse: true, error: null, reviews: [] }
+    try {
+        const response = await db
+                            .collection("reviews")
+                            .where("idRestaurant", "==", id)
+                            .get()
+        response.forEach((doc) => {
+            const review = doc.data()
+            review.id = doc.id
+            result.reviews.push(review)
+        })
     } catch (error) {
         result.statusResponse = false
         result.error = error
