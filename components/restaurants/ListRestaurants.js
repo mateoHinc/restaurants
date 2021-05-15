@@ -4,7 +4,6 @@ import { Image } from 'react-native-elements'
 import { FlatList, StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native'
 
 import { formatPhone } from '../../utils/helpers'
-import { NavigationHelpersContext } from '@react-navigation/core'
 
 export default function ListRestaurants({ restaurants, navigation, handleLoadMore }) {
     return (

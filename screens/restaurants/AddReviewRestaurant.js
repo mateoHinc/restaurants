@@ -18,7 +18,7 @@ export default function AddReviewRestaurant({ navigation, route }) {
     const [review, setReview] = useState("")
     const [errorReview, setErrorReview] = useState(null)
     const [loading, setLoading] = useState(false)
-    
+
     const addReview = async() => {
         if (!validForm()) {
             return
@@ -37,16 +37,16 @@ export default function AddReviewRestaurant({ navigation, route }) {
         }
 
         const responseAddReview = await addDocumentWithoutId("reviews", data)
-        if(!responseAddReview.statusResponse) {
+        if (!responseAddReview.statusResponse) {
             setLoading(false)
-            toastRef.current.show("Error al enviar el comentario. Por favor intentarlo más tarde", 3000)
+            toastRef.current.show("Error al enviar el comentario, por favor intenta más tarde.", 3000)
             return
         }
 
         const responseGetRestaurant = await getDocumentById("restaurants", idRestaurant)
-        if(!responseGetRestaurant.statusResponse) {
+        if (!responseGetRestaurant.statusResponse) {
             setLoading(false)
-            toastRef.current.show("Error obtener el restaurante. Por favor intentarlo más tarde", 3000)
+            toastRef.current.show("Error al obtener el restaurante, por favor intenta más tarde.", 3000)
             return
         }
 
@@ -54,7 +54,6 @@ export default function AddReviewRestaurant({ navigation, route }) {
         const ratingTotal = restaurant.ratingTotal + rating
         const quantityVoting = restaurant.quantityVoting + 1
         const ratingResult = ratingTotal / quantityVoting
-        
         const responseUpdateRestaurant = await updateDocument("restaurants", idRestaurant, {
             ratingTotal,
             quantityVoting,
@@ -62,13 +61,12 @@ export default function AddReviewRestaurant({ navigation, route }) {
         })
         setLoading(false)
 
-        if(!responseUpdateRestaurant.statusResponse) {
-            toastRef.current.show("Error actualizar el restaurante. Por favor intentarlo más tarde", 3000)
+        if (!responseUpdateRestaurant.statusResponse) {
+            toastRef.current.show("Error al actualizar el restaurante, por favor intenta más tarde.", 3000)
             return
         }
 
         navigation.goBack()
-
     }
 
     const validForm = () => {
@@ -77,16 +75,16 @@ export default function AddReviewRestaurant({ navigation, route }) {
         let isValid = true
 
         if (!rating) {
-            toastRef.current.show("Debes darle una puntuacion al restaurante.", 3000)
+            toastRef.current.show("Debes darle una puntuación al restaurante.", 3000)
             isValid = false
         }
 
-        if(isEmpty(title)){
-            setErrorTitle("Debes ingresar un titulo a tu comentario.")
+        if (isEmpty(title)) {
+            setErrorTitle("Debes ingresar un título a tu comentario.")
             isValid = false
         }
 
-        if(isEmpty(review)){
+        if (isEmpty(review)) {
             setErrorReview("Debes ingresar un comentario.")
             isValid = false
         }
@@ -99,7 +97,7 @@ export default function AddReviewRestaurant({ navigation, route }) {
             <View style={styles.viewRating}>
                 <AirbnbRating
                     count={5}
-                    reviews={[ "Malo","Regular","Normal","Muy Bueno","Excelente" ]}
+                    reviews={[ "Malo", "Regular", "Normal", "Muy Bueno", "Excelente" ]}
                     defaultRating={0}
                     size={35}
                     onFinishRating={(value) => setRating(value)}
@@ -107,7 +105,7 @@ export default function AddReviewRestaurant({ navigation, route }) {
             </View>
             <View style={styles.formReview}>
                 <Input
-                    placeholder="Titulo..."
+                    placeholder="Título..."
                     containerStyle={styles.input}
                     onChange={(e) => setTitle(e.nativeEvent.text)}
                     errorMessage={errorTitle}
@@ -157,7 +155,7 @@ const styles = StyleSheet.create({
         margin: 0
     },
     btnContainer: {
-        flex: 1,
+        flex: 1, 
         justifyContent: "flex-end",
         marginTop: 20,
         marginBottom: 10,

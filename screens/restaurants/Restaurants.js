@@ -84,7 +84,7 @@ export default function Restaurants({ navigation }) {
                     />
                 )   
             }
-            <Loading isVisible={loading} text="Cargando Restaurantes..."/>
+            {/* <Loading isVisible={loading} text="Cargando Restaurantes..."/> */}
         </View>
     )
 }

@@ -1,5 +1,5 @@
 import { map } from 'lodash'
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { Alert, Dimensions, StyleSheet, Text, View, ScrollView} from 'react-native'
 import { ListItem, Rating, Icon } from 'react-native-elements'
 import { useFocusEffect} from '@react-navigation/native'
@@ -10,7 +10,7 @@ import CarouselImages from '../../components/CarouselImages'
 import Loading from '../../components/Loading'
 import ListReviews from '../../components/restaurants/ListReviews'
 import MapRestaurant from '../../components/restaurants/MapRestaurant'
-import { getDocumentById } from '../../utils/actions'
+import { addDocumentWithoutId, getDocumentById, getIsFavorite, deleteFavorite } from '../../utils/actions'
 import { formatPhone } from '../../utils/helpers'
 
 const widthScreen = Dimensions.get("window").width
@@ -23,13 +23,14 @@ export default function Restaurant({ navigation, route }) {
     const [activeSlide, setActiveSlide] = useState(0)
     const [isFavorite, setIsFavorite] = useState(false)
     const [userLogged, setUserLogged] = useState(false)
+    const [loading, setLoading] = useState(false)
+
 
     firebase.auth().onAuthStateChanged(user => {
         user ? setUserLogged(true) : setUserLogged(false)
     })
 
     navigation.setOptions({ title: name })
-
 
     useFocusEffect(
         useCallback(() => {
@@ -41,20 +42,54 @@ export default function Restaurant({ navigation, route }) {
                     setRestaurant({})
                     Alert.alert("Ocurrió un problema cargando el restaurante. Intente más tarde.")
                 }
+
             })()
         }, [])
     )
 
-    const addFavorite = () => {
+    useEffect(() => {
+        (async() => {
+            if(userLogged && restaurant){
+                const response = await getIsFavorite(restaurant.id)
+                response.statusResponse && setIsFavorite(response.isFavorite)
+            }
+        })()
+    }, [userLogged, restaurant])
+
+    const addFavorite = async() => {
         if(!userLogged) {
             toastRef.current.show("Para agregar el restaurante a favoritos debe estar logueado",3000)
             return
         }
-        console.log("add Favorite", id)
+
+        setLoading(true)
+        const response = await addDocumentWithoutId("favorites", {
+            idUser: getCurrentUser().uid,
+            idRestaurant: restaurant.id
+        })
+        setLoading(false)
+        
+        if(response.statusResponse){
+            setIsFavorite(true)
+            toastRef.current.show("Restaurante añadido a favoritos.",3000)  
+        } else {
+            toastRef.current.show("No se pudo adicionar el restaurante a favoritos. Por favor intenta más tarde.",3000)
+        }
+
     }
 
-    const removeFavorite = () => {
-        console.log("remove Favorite")
+    const removeFavorite = async() => {
+        setLoading(true)
+        const response = await deleteFavorite(restaurant.id)
+
+        setLoading(false)
+
+        if(response.statusResponse){
+            setIsFavorite(true)
+            toastRef.current.show("Restaurante eliminado de favoritos.",3000)  
+        } else {
+            toastRef.current.show("No se pudo eliminar el restaurante de favoritos. Por favor intenta más tarde.",3000)
+        }
     }
 
     if(!restaurant){
@@ -75,7 +110,7 @@ export default function Restaurant({ navigation, route }) {
                     type="material-community"
                     name={ isFavorite ? "heart" : "heart-outline"}
                     onPress={ isFavorite ? removeFavorite : addFavorite}
-                    color={ isFavorite ? "#fff" : "#442484"}
+                    color="#442484"
                     size={35}
                     underlayColor="transparent"
                 />
@@ -97,6 +132,7 @@ export default function Restaurant({ navigation, route }) {
                 idUser={restaurant.id}
             />
             <Toast ref={toastRef} position="center" opacity={0.9}/>
+            <Loading isVisible={loading} text="Por favor espere..."/>
         </ScrollView>
     )
 }
