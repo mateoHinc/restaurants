@@ -1,7 +1,7 @@
-import { map } from 'lodash'
+import { isEmpty, map, rest } from 'lodash'
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { Alert, Dimensions, StyleSheet, Text, View, ScrollView} from 'react-native'
-import { ListItem, Rating, Icon } from 'react-native-elements'
+import { Alert, Dimensions, StyleSheet, Text, View, ScrollView } from 'react-native'
+import { ListItem, Rating, Icon, Input, Button } from 'react-native-elements'
 import { useFocusEffect} from '@react-navigation/native'
 import firebase from 'firebase/app'
 import Toast from 'react-native-easy-toast'
@@ -10,8 +10,18 @@ import CarouselImages from '../../components/CarouselImages'
 import Loading from '../../components/Loading'
 import ListReviews from '../../components/restaurants/ListReviews'
 import MapRestaurant from '../../components/restaurants/MapRestaurant'
-import { addDocumentWithoutId, getDocumentById, getIsFavorite, deleteFavorite } from '../../utils/actions'
-import { formatPhone } from '../../utils/helpers'
+import { 
+         addDocumentWithoutId, 
+         getDocumentById, 
+         getIsFavorite, 
+         deleteFavorite, 
+         sendPushNotification, 
+         getCurrentUser, 
+         setNotificationMessage,
+         getUserFavorite
+       } from '../../utils/actions'
+import { callNumber, formatPhone, sendEmail, sendWhatsApp } from '../../utils/helpers'
+import Modal from '../../components/Modal'
 
 const widthScreen = Dimensions.get("window").width
 
@@ -23,11 +33,13 @@ export default function Restaurant({ navigation, route }) {
     const [activeSlide, setActiveSlide] = useState(0)
     const [isFavorite, setIsFavorite] = useState(false)
     const [userLogged, setUserLogged] = useState(false)
+    const [currentUser, setCurrentUser] = useState(null)
     const [loading, setLoading] = useState(false)
-
+    const [modalNotification, setModalNotification] = useState(false)
 
     firebase.auth().onAuthStateChanged(user => {
         user ? setUserLogged(true) : setUserLogged(false)
+        setCurrentUser(user)
     })
 
     navigation.setOptions({ title: name })
@@ -126,10 +138,21 @@ export default function Restaurant({ navigation, route }) {
                 address={restaurant.address}
                 email={restaurant.email}
                 phone={formatPhone(restaurant.callingCode, restaurant.phone)}
+                currentUser={currentUser}
+                callingCode={restaurant.callingCode}
+                phoneNoFormat={restaurant.phone}
+                setLoading={setLoading}
+                setModalNotification={setModalNotification}
             />
             <ListReviews
                 navigation={navigation}
                 idUser={restaurant.id}
+            />
+            <SendMessage
+                modalNotification={modalNotification}
+                setModalNotification={setModalNotification}
+                setLoading={setLoading}
+                restaurant={restaurant}
             />
             <Toast ref={toastRef} position="center" opacity={0.9}/>
             <Loading isVisible={loading} text="Por favor espere..."/>
@@ -137,12 +160,140 @@ export default function Restaurant({ navigation, route }) {
     )
 }
 
-function RestaurantInfo({ name, location, address, email, phone }) {
+function SendMessage({ modalNotification, setModalNotification, setLoading, restaurant }) {
+    
+    const [title, setTitle] = useState(null)
+    const [errorTitle, setErrorTitle] = useState(null)
+    const [message, setMessage] = useState(null)
+    const [errorMessage, setErrorMessage] = useState(null)
+    
+    const sendNotification = async() => {
+
+        if(!validForm()){
+
+        }
+
+        setLoading(true)
+        const userName = getCurrentUser().displayName ? getCurrentUser().displayName : "Anónimo"
+        const theMessage = `${message}, del restaurante: ${restaurant.name}`
+
+        const usersFavorite = await getUserFavorite(restaurant.id)
+        if (!usersFavorite.statusResponse) {
+            setLoading(false)
+            Alert.alert("Error al obtener los usuarios que aman el restaurante.")
+            return
+        }
+
+        await Promise.all (
+            map(usersFavorite.users, async(user) => {
+                const messageNotification = setNotificationMessage(
+                    user.token,
+                    `${userName}, dijo ${title}`,
+                    theMessage,
+                    { data: theMessage }
+                )
+        
+                await sendPushNotification(messageNotification)        
+            })    
+        )
+
+        setLoading(false)
+        setTitle(null)
+        setMessage(null)
+        setModalNotification(false)
+    }
+
+    const validForm = () => {
+        let isValid = true
+        
+        if (isEmpty(title)) {
+            setErrorTitle("Debes ingresar un título a tu mensaje.")
+            isValid = false
+        }
+
+        if (isEmpty(message)) {
+            setErrorMessage("Debes ingresar un mensaje.")
+            isValid = false
+        }
+
+        return isValid
+    }
+
+    return(
+        <Modal
+            isVisible={modalNotification}
+            setVisible={setModalNotification}
+        >
+            <View style={styles.modalContainer}>
+                <Text style={styles.textModal}>
+                    Envíale un mensaje a los amantes de {restaurant.name}
+                </Text>
+                <Input
+                    placeholder="Título del mensaje..."
+                    onChangeText={ (text) => setTitle(text) }
+                    value={title}
+                    errorTitle={errorTitle}
+                />
+                <Input
+                    placeholder="Mensaje..."
+                    multiline
+                    inputStyle={styles.textArea}
+                    onChangeText={ (text) => setMessage(text) }
+                    value={message}
+                    errorMessage={errorMessage}
+                />
+                <Button
+                    title="Envíar Mensaje"
+                    buttonStyle={styles.btnSend}
+                    containerStyle={styles.btnSendContainer}
+                    onPress={sendNotification()}
+                />
+            </View>
+        </Modal>
+    )
+}
+
+function RestaurantInfo({ 
+    name, 
+    location, 
+    address, 
+    email, 
+    phone, 
+    currentUser, 
+    callingCode, 
+    phoneNoFormat, 
+    setLoading,
+    setModalNotification
+}) {
      const listInfo = [
-         { text: address, iconName: "map-marker"},
-         { text: phone, iconName: "phone"},
-         { text: email, iconName: "at"}
+         { type: "address", text: address, iconLeft: "map-marker", iconRigth: "message-text-outline"},
+         { type: "phone", text: phone, iconLeft: "phone", iconRigth: "whatsapp"},
+         { type: "email", text: email, iconLeft: "at"}
      ]
+
+     const actionLeft = (type) => {
+         if(type == "phone") {
+            callNumber(phone)
+         } else if(type ==  "email") {
+            if(currentUser){
+                sendEmail(email, "Interesado", `Soy ${currentUser.displayName}, estoy interesado en sus servicios`)
+            } else {
+                sendEmail(email, "Interesado", `Estoy interesado en sus servicios`)
+            }
+         }
+     }
+
+     const actionRight = (type) => {
+        if(type == "phone") {
+            if(currentUser){
+                sendWhatsApp(`${callingCode}${phoneNoFormat}`, `Soy ${currentUser.displayName}, estoy interesado en sus servicios`)
+            } else {
+                sendWhatsApp(`${callingCode}${phoneNoFormat}`, `Estoy interesado en sus servicios`)
+            }
+        } else if (type == "address") {
+            setModalNotification(true)
+        }
+     }
 
      return (
          <View style={styles.viewRestaurantInfo}>
@@ -162,12 +313,23 @@ function RestaurantInfo({ name, location, address, email, phone }) {
                      >
                          <Icon
                             type="material-community"
-                            name={item.iconName}
+                            name={item.iconLeft}
                             color="#442484"
+                            onPress={() => actionLeft(item.type)}
                          />
                          <ListItem.Content>
                              <ListItem.Title>{item.text}</ListItem.Title>
                          </ListItem.Content>
+                         {
+                             item.iconRigth && (
+                                <Icon
+                                   type="material-community"
+                                   name={item.iconRigth}
+                                   color="#442484"
+                                   onPress={() => actionRight(item.type)}
+                                />
+                             )
+                         }
                      </ListItem>
                  ))
              }
@@ -238,5 +400,24 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 100,
         padding: 5,
         paddingLeft: 15
+    },
+    textArea: {
+        height: 50,
+        paddingHorizontal: 10
+    },
+    btnSend: {
+        backgroundColor: "#442848"
+    },
+    btnSendContainer: {
+        width: "95%"
+    },
+    textModal: {
+        color: "#000",
+        fontSize: 16,
+        fontWeight: "bold"
+    },
+    modalContainer: {
+        justifyContent: "center",
+        alignItems: "center"
     }
 })
