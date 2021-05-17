@@ -18,10 +18,17 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.matt.restaurants"
+      "bundleIdentifier": "com.matt.restaurants",
+      "config": {
+        "googleSignIn": {
+          "reservedClientId": "com.googleusercontent.apps.171077878521-hv6es6qt6v2gp19a6r1kriu42nqfmo3b"
+        }
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "package": "com.matt.restaurants",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
